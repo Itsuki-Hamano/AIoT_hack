@@ -1,0 +1,47 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sat Nov 17 17:28:16 2018
+
+@author: IstukiHamano
+"""
+
+#必要なモジュールの読み込み
+from flask import Flask,jsonify,make_response,request
+from keras.models import model_from_json
+from keras.preprocessing import image
+from keras.applications.vgg16 import preprocess_input
+import numpy as np
+from keras import backend as K
+from PIL import Image
+
+#Flaskクラスのインスタンス化
+#__name__は現在のだいるのモジュール名
+api=Flask(__name__)
+
+#POSTの口空ける
+@api.route('/imgAnalysis',methods=['POST'])
+def imgAn2():
+    model_file_name="car_model_from_VGG16.json"#作成したモデル（層の作り）を出力するファイル名
+    weight_file_name="car_weight_from_VGG16.h5"#学習済みモデルの重みを出力するファイル名
+    model=model_from_json(open(model_file_name).read()) #作成したモデルの読み込み
+    model.load_weights(weight_file_name)#学習済み重みの読み込み
+    value=request.files['upload_file']#jsonのkey名指定
+    img = Image.open(value)
+    img=img.resize((224, 224))
+    x=image.img_to_array(img)#画像ベクトルに変換
+    x=np.expand_dims(x,axis=0)#画像ベクトルをnumpy配列に変換
+    preds=model.predict(preprocess_input(x))
+    K.clear_session()
+    preds=np.array(preds[0])
+    return  jsonify({'Danger_Road':str(preds[0]),'Safe_Road':str(preds[1])})
+
+@api.errorhandler(404)
+def not_found(error):
+    return make_response(jsonify({'ermsg':'not found'}))
+
+#ポート番号設定
+if __name__=='__main__':
+    api.run(port=7777)
+    
+
+    
